@@ -45,6 +45,7 @@ public class PlayerController : MonoBehaviour
     bool isWalled = false;
     bool isWalledLeft = false;
     bool isWalledRight = false;
+    bool canWallJump = true;
 
     FacingDirection currentDirection = FacingDirection.right;
     Vector2 velocity;
@@ -128,18 +129,27 @@ public class PlayerController : MonoBehaviour
         {
             velocity.y = initialJumpSpeed;
             isGrounded = false;
+
+            /* Known issue to be resolved in Week 14 final version. Because, at this moment, isGrounded is set to false, the player
+             * is now considered able to wall jump provided they are touching a wall. However, the wall jump does NOT require the
+             * player to release the jump button and press it again. As a result, if the player is directly in contact with a wall
+             * while grounded, the jump button press will register for a base jump first, verify that they are in contact with a wall,
+             * and immediately perform a wall jump as a result, rather than waiting for a second input. This issue, again, will be
+             * resolved in the Week 14 final version. */
+            canWallJump = true;
         }
 
-        if (isWalled && Input.GetButton("Jump") && !isGrounded)
+        if (isWalled && Input.GetButton("Jump") && !isGrounded && canWallJump)
         {
             velocity.y = initialJumpSpeed;
-            if(isWalledLeft)
+            canWallJump = false;
+            if (isWalledRight)
             {
-                velocity.x = maxSpeed;
+                velocity.x = walkSpeed * -1;
             }
-            if(isWalledRight)
+            if (isWalledLeft)
             {
-                velocity.x = -maxSpeed;
+                velocity.x = walkSpeed;
             }
         }
     }
@@ -153,7 +163,7 @@ public class PlayerController : MonoBehaviour
     {
         isWalled = Physics2D.OverlapBox(transform.position + Vector3.down * wallCheckOffset, wallCheckSize, 0, wallCheckMask);
         isWalledLeft = Physics2D.OverlapBox(transform.position + Vector3.left * leftRightOffset, leftRightCheckSize, 0, wallCheckMask);
-        isWalledRight = Physics2D.OverlapBox(transform.position + Vector3.right * wallCheckOffset, leftRightCheckSize, 0, wallCheckMask);
+        isWalledRight = Physics2D.OverlapBox(transform.position + Vector3.right * leftRightOffset, leftRightCheckSize, 0, wallCheckMask);
     }
 
     public void OnDrawGizmos()

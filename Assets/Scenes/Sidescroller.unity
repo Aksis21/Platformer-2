@@ -2023,7 +2023,7 @@ MonoBehaviour:
   apexHeight: 4.3
   apexTime: 0.5
   terminalSpeed: 10
-  groundCheckOffset: 0.62
+  groundCheckOffset: 0.7
   groundCheckSize: {x: 0.4, y: 0.1}
   groundCheckMask:
     serializedVersion: 2
