@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public enum FacingDirection
@@ -12,16 +13,28 @@ public class PlayerController : MonoBehaviour
     [Header("Horizontal")]
     public float decelerationTime = 0.15f;
     public float accelerationTime = 0.25f;
-    public float maxSpeed = 5f;
+
+    //Walk/Sprint variables created to store the max walk and sprint speed.
+    public float walkSpeed = 5f;
+    public float sprintSpeed = 10f;
+    float maxSpeed;
 
     [Header("Vertical")]
     public float apexHeight = 3f;
     public float apexTime = 0.5f;
+    public float terminalSpeed = 10f;
 
     [Header("Ground Checking")]
     public float groundCheckOffset = 0.5f;
     public Vector2 groundCheckSize = new(0.4f, 0.1f);
     public LayerMask groundCheckMask;
+
+    [Header("Wall Checking")]
+    public float wallCheckOffset;
+    public Vector2 wallCheckSize = new(0.1f, 0.5f);
+    public float leftRightOffset = 0.5f;
+    public Vector2 leftRightCheckSize;
+    public LayerMask wallCheckMask;
 
     float accelerationRate;
     float decelerationRate;
@@ -29,12 +42,18 @@ public class PlayerController : MonoBehaviour
     float initialJumpSpeed;
 
     bool isGrounded = false;
+    bool isWalled = false;
+    bool isWalledLeft = false;
+    bool isWalledRight = false;
 
     FacingDirection currentDirection = FacingDirection.right;
     Vector2 velocity;
 
     public void Start()
     {
+        //By default, max speed is set to walk speed.
+        maxSpeed = walkSpeed;
+
         body.gravityScale = 0;
 
         accelerationRate = maxSpeed / accelerationTime;
@@ -47,15 +66,25 @@ public class PlayerController : MonoBehaviour
     public void Update()
     {
         CheckForGround();
+        CheckForWall();
 
         Vector2 playerInput = new Vector2();
         playerInput.x = Input.GetAxisRaw("Horizontal");
+
+        if (Input.GetKeyDown(KeyCode.LeftShift))
+            maxSpeed = sprintSpeed;
+        if (Input.GetKeyUp(KeyCode.LeftShift))
+            maxSpeed = walkSpeed;
 
         MovementUpdate(playerInput);
         JumpUpdate();
 
         if (!isGrounded)
+        {
             velocity.y += gravity * Time.deltaTime;
+            if (velocity.y < -terminalSpeed)
+                velocity.y = -terminalSpeed;
+        }
         else
             velocity.y = 0;
 
@@ -100,6 +129,19 @@ public class PlayerController : MonoBehaviour
             velocity.y = initialJumpSpeed;
             isGrounded = false;
         }
+
+        if (isWalled && Input.GetButton("Jump") && !isGrounded)
+        {
+            velocity.y = initialJumpSpeed;
+            if(isWalledLeft)
+            {
+                velocity.x = maxSpeed;
+            }
+            if(isWalledRight)
+            {
+                velocity.x = -maxSpeed;
+            }
+        }
     }
 
     private void CheckForGround()
@@ -107,14 +149,19 @@ public class PlayerController : MonoBehaviour
         isGrounded = Physics2D.OverlapBox(transform.position + Vector3.down * groundCheckOffset, groundCheckSize, 0, groundCheckMask);
     }
 
-    private void DebugDrawGroundCheck()
+    private void CheckForWall()
     {
-        Vector3 p1 = transform.position + Vector3.down * groundCheckOffset + new Vector3(groundCheckSize.x / 2, groundCheckSize.y / 2);
+        isWalled = Physics2D.OverlapBox(transform.position + Vector3.down * wallCheckOffset, wallCheckSize, 0, wallCheckMask);
+        isWalledLeft = Physics2D.OverlapBox(transform.position + Vector3.left * leftRightOffset, leftRightCheckSize, 0, wallCheckMask);
+        isWalledRight = Physics2D.OverlapBox(transform.position + Vector3.right * wallCheckOffset, leftRightCheckSize, 0, wallCheckMask);
     }
 
     public void OnDrawGizmos()
     {
         Gizmos.DrawWireCube(transform.position + Vector3.down * groundCheckOffset, groundCheckSize);
+        Gizmos.DrawWireCube(transform.position + Vector3.down * wallCheckOffset, wallCheckSize);
+        Gizmos.DrawWireCube(transform.position + Vector3.left * leftRightOffset, leftRightCheckSize);
+        Gizmos.DrawWireCube(transform.position + Vector3.right * leftRightOffset, leftRightCheckSize);
     }
 
     public bool IsWalking()
