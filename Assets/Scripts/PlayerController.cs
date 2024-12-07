@@ -1,3 +1,4 @@
+using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -36,6 +37,11 @@ public class PlayerController : MonoBehaviour
     public Vector2 leftRightCheckSize;
     public LayerMask wallCheckMask;
 
+    [Header("Dash")]
+    public float dashChargeTime;
+    float dashCharge = 0f;
+    float chargeTime = 0f;
+
     float accelerationRate;
     float decelerationRate;
     float gravity;
@@ -46,6 +52,15 @@ public class PlayerController : MonoBehaviour
     bool isWalledLeft = false;
     bool isWalledRight = false;
     bool canWallJump = true;
+    //public bool canJump = true;
+
+    //public float jumpCooldown;
+    //float jumpTimer;
+
+    //This float exists for the third mechanic, as the player cannot move while charging up their dash.
+    bool canMove = true;
+    bool dashCharging = false;
+    bool canDash = true;
 
     FacingDirection currentDirection = FacingDirection.right;
     Vector2 velocity;
@@ -77,10 +92,11 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKeyUp(KeyCode.LeftShift))
             maxSpeed = walkSpeed;
 
+        dash();
         MovementUpdate(playerInput);
         JumpUpdate();
 
-        if (!isGrounded)
+        if (!isGrounded && canMove)
         {
             velocity.y += gravity * Time.deltaTime;
             if (velocity.y < -terminalSpeed)
@@ -90,6 +106,37 @@ public class PlayerController : MonoBehaviour
             velocity.y = 0;
 
         body.velocity = velocity;
+    }
+
+    private void dash()
+    {
+        if (Input.GetKeyDown(KeyCode.S) && canMove && canDash)
+        {
+            canMove = false;
+            dashCharging = true;
+        }
+        if (Input.GetKeyUp(KeyCode.S) || chargeTime > dashChargeTime)
+        {
+            dashCharging = false;
+            chargeTime = 0f;
+
+            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            Vector2 target = new Vector2(mousePos.x - transform.position.x, mousePos.y - transform.position.y);
+            body.AddForce(target.normalized * dashCharge);
+            dashCharge = 0f;
+            canMove = true;
+            canWallJump = true;
+            canDash = false;
+        }
+
+        if (dashCharging)
+        {
+            dashCharge += 30;
+            chargeTime += Time.deltaTime;
+        }
+
+        if (!canDash && isGrounded)
+            canDash = true;
     }
 
     private void MovementUpdate(Vector2 playerInput)
@@ -103,7 +150,7 @@ public class PlayerController : MonoBehaviour
             currentDirection = FacingDirection.left;
         }
 
-        if (playerInput.x != 0)
+        if (playerInput.x != 0 && canMove)
         {
             velocity.x += accelerationRate * playerInput.x * Time.deltaTime;
             velocity.x = Mathf.Clamp(velocity.x, -maxSpeed, maxSpeed);
@@ -125,21 +172,15 @@ public class PlayerController : MonoBehaviour
 
     private void JumpUpdate()
     {
-        if (isGrounded && Input.GetButton("Jump"))
+        if (isGrounded && Input.GetButton("Jump") /*&& canJump*/)
         {
             velocity.y = initialJumpSpeed;
             isGrounded = false;
-
-            /* Known issue to be resolved in Week 14 final version. Because, at this moment, isGrounded is set to false, the player
-             * is now considered able to wall jump provided they are touching a wall. However, the wall jump does NOT require the
-             * player to release the jump button and press it again. As a result, if the player is directly in contact with a wall
-             * while grounded, the jump button press will register for a base jump first, verify that they are in contact with a wall,
-             * and immediately perform a wall jump as a result, rather than waiting for a second input. This issue, again, will be
-             * resolved in the Week 14 final version. */
             canWallJump = true;
+            //canJump = false;
         }
 
-        if (isWalled && Input.GetButton("Jump") && !isGrounded && canWallJump)
+        if (isWalled && Input.GetButton("Jump") && !isGrounded && canWallJump /*&& canJump*/)
         {
             velocity.y = initialJumpSpeed;
             canWallJump = false;
@@ -151,7 +192,16 @@ public class PlayerController : MonoBehaviour
             {
                 velocity.x = walkSpeed;
             }
+            //canJump = false;
         }
+
+        /*if (!canJump)
+            jumpTimer -= Time.deltaTime;
+        if (jumpTimer <= 0)
+        {
+            canJump = true;
+            jumpTimer = jumpCooldown;
+        }*/
     }
 
     private void CheckForGround()

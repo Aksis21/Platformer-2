@@ -18,6 +18,8 @@ public class CameraController2D : MonoBehaviour
 
     private Vector3 shakeOffset = Vector3.zero;
 
+    public float shakeTime;
+
     void Start()
     {
         tilemap.CompressBounds();
@@ -37,7 +39,7 @@ public class CameraController2D : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.S))
         {
-            Shake(2.5f, 3f);
+            Shake(2.5f, shakeTime);
         }
 
         Vector3 desiredPosition = target.position + new Vector3(offset.x, offset.y, transform.position.z) + shakeOffset;
@@ -57,12 +59,17 @@ public class CameraController2D : MonoBehaviour
     private IEnumerator ShakeCoroutine(float intensity, float duration)
     {
         float elapsed = 0f;
+
         while (elapsed < duration)
         {
+            if (Input.GetKeyUp(KeyCode.S))
+                duration = 0f;
+
             shakeOffset = Random.insideUnitCircle * intensity;
             elapsed += Time.deltaTime;
             yield return null;
         }
+
         shakeOffset = Vector3.zero;
     }
 }
